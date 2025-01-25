@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Détail du Superhéros</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <div id="navbar-placeholder"></div>
+    <div id="app" class="container my-4">
+        <h1 class="text-center my-4">Détail du Superhéros</h1>
+
+        <div v-if="hero">
+            <div class="text-center mb-4">
+                <img :src="hero.images.lg || 'default-image.jpg'" class="img-fluid rounded" alt="Hero Image">
+            </div>
+            <div class="card">
+                <div class="card-body">
+                    <h2 class="card-title text-center">{{ hero.name || 'Indisponible' }}</h2>
+                    <p><strong>Nom complet :</strong> {{ hero.name || 'Indisponible' }}</p>
+                    <p><strong>Alias :</strong> {{ hero.biography.aliases.length ? hero.biography.aliases.join(', ') : 'Indisponible' }}</p>
+                    <p><strong>Éditeur :</strong> {{ hero.biography.publisher || 'Indisponible' }}</p>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h3 class="card-title">Caractéristiques physiques</h3>
+                    <p><strong>Genre :</strong> {{ hero.appearance.gender || 'Indisponible' }}</p>
+                    <p><strong>Race :</strong> {{ hero.appearance.race || 'Indisponible' }}</p>
+                    <p><strong>Taille :</strong> {{ hero.appearance.height[1] || 'Indisponible' }}</p>
+                    <p><strong>Poids :</strong> {{ hero.appearance.weight[1] || 'Indisponible' }}</p>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h3 class="card-title">Statistiques de pouvoir</h3>
+                    <div v-for="(value, stat) in translatedPowerstats(hero.powerstats)" :key="stat">
+                        <p><strong>{{ stat }} :</strong> {{ value || 'Indisponible' }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div v-else>
+            <p>Le héros demandé n'a pas pu être trouvé ou une erreur est survenue.</p>
+        </div>
+    </div>
+
+    <script>
+        fetch('navbar.html')
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('navbar-placeholder').innerHTML = data;
+            });
+
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    hero: null,
+                    powerTranslations: {
+                        intelligence: 'Intelligence',
+                        strength: 'Force',
+                        speed: 'Vitesse',
+                        durability: 'Durabilité',
+                        power: 'Pouvoir',
+                        combat: 'Combat'
+                    }
+                };
+            },
+            methods: {
+                translatedPowerstats(powerstats) {
+                    const translated = {};
+                    for (const [stat, value] of Object.entries(powerstats)) {
+                        translated[this.powerTranslations[stat] || stat] = value;
+                    }
+                    return translated;
+                }
+            },
+            mounted() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const heroId = urlParams.get('id');
+                
+                if (!heroId) {
+                    console.error('ID de héros manquant dans l\'URL');
+                    return;
+                }
+
+                axios.get(`https://cdn.jsdelivr.net/gh/rtomczak/superhero-api@0.3.0/api/id/${heroId}.json`)
+                    .then(response => {
+                        if (response.data) {
+                            this.hero = {
+                                ...response.data,
+                                biography: {
+                                    ...response.data.biography,
+                                    fullName: response.data.biography?.['full-name'] || 'Indisponible',
+                                    firstAppearance: response.data.biography?.['first-appearance'] || 'Indisponible',
+                                }
+                            };
+                        } else {
+                            console.error('Aucun héros trouvé avec cet ID.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erreur lors de la récupération des données :', error);
+                    });
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
